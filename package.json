@@ -1,0 +1,38 @@
+{
+  "name": "@hydro-protocol/sdk",
+  "version": "1.0.0",
+  "description": "Javascript SDK for the Hydro API",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "axios": "^0.18.0",
+    "bignumber.js": "^6.0.0",
+    "ethereumjs-util": "^5.1.5",
+    "ws": "^5.1.1"
+  },
+  "devDependencies": {
+    "@types/ethereumjs-util": "^5.1.1",
+    "@types/node": "^9.4.6",
+    "@types/ws": "^4.0.2",
+    "typescript": "^2.8.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HydroProtocol/sdk.git"
+  },
+  "keywords": [
+    "hydro",
+    "hydro-protocol",
+    "sdk",
+    "api"
+  ],
+  "author": "Kevin West",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/HydroProtocol/sdk/issues"
+  },
+  "homepage": "https://github.com/HydroProtocol/sdk#readme"
+}
