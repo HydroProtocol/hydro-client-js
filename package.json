@@ -1,6 +1,6 @@
 {
   "name": "@hydro-protocol/sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Javascript SDK for the Hydro API",
   "main": "build/index.js",
   "types": "build/index.d.ts",
