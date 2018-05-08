@@ -44,6 +44,7 @@ export class HydroClient {
   public static withPrivateKey(privateKey: string): HydroClient {
     const privateKeyBuffer: Buffer = toBuffer(privateKey) as Buffer
     let sign = (message: string) => {
+      // @ts-ignore: Error in the ethereumjs-util ts definition
       const shaMessage = hashPersonalMessage(toBuffer(message))
       const ecdsaSignature = ecsign(shaMessage, privateKeyBuffer)
       return toRpcSig(ecdsaSignature.v, ecdsaSignature.r, ecdsaSignature.s)
