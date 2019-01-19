@@ -1,6 +1,6 @@
 {
   "name": "@hydro-protocol/sdk",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Javascript SDK for the Hydro API",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -12,13 +12,14 @@
     "axios": "^0.18.0",
     "bignumber.js": "^6.0.0",
     "ethereumjs-util": "^5.1.5",
+    "path": "^0.12.7",
     "ws": "^5.1.1"
   },
   "devDependencies": {
     "@types/ethereumjs-util": "^5.1.1",
     "@types/node": "^9.4.6",
     "@types/ws": "^4.0.2",
-    "typescript": "^2.8.3"
+    "typescript": "^2.9.2"
   },
   "repository": {
     "type": "git",

@@ -5,16 +5,16 @@ export class Channel {
   /**
    * The name of a subscription channel
    */
-  readonly name: ChannelName
+  readonly name: ChannelName;
 
   /**
    * Which market IDs are included in this subscription
    */
-  readonly marketIds: string[]
+  readonly marketIds: string[];
 
   constructor(json: any) {
-    this.name = json.name
-    this.marketIds = json.marketIds
+    this.name = json.name;
+    this.marketIds = json.marketIds;
   }
 }
 
@@ -24,5 +24,5 @@ export class Channel {
 export enum ChannelName {
   TICKER = "ticker",
   ORDERBOOK = "orderbook",
-  FULL = "full",
+  FULL = "full"
 }

@@ -56,3 +56,9 @@ typings/
 
 # dotenv environment variables file
 .env
+
+# VS Code settings
+.vscode
+
+# Quick test file directory
+.scratch
