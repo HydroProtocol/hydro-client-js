@@ -8,7 +8,7 @@ import { Trade } from '../models/Trade';
 import { PriceLevel } from '../models/PriceLevel';
 
 export interface HydroWatcherOptions {
-  websocket_url?: string;
+  websocketUrl?: string;
 }
 
 /**
@@ -86,8 +86,8 @@ export class HydroWatcher {
   }
 
   private getWebsocketUrl(): string {
-    return this.options && this.options.websocket_url
-      ? this.options.websocket_url
+    return this.options && this.options.websocketUrl
+      ? this.options.websocketUrl
       : HydroWatcher.SOCKET_URL;
   }
 

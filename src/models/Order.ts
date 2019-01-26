@@ -1,5 +1,5 @@
-import { BigNumber } from "bignumber.js";
-import { OrderData } from "./OrderData";
+import { BigNumber } from 'bignumber.js';
+import { OrderData } from './OrderData';
 
 /**
  * Data used to represent an order on the exchange. The values in this class
@@ -119,67 +119,42 @@ export class Order {
     this.id = json.id || json.orderId;
     this.version = json.version;
     this.marketId = json.marketId;
-    this.type =
-      json.type && json.type.toUpperCase
-        ? json.type.toUpperCase()
-        : OrderType.LIMIT;
+    this.type = json.type && json.type.toUpperCase ? json.type.toUpperCase() : 'limit';
     this.status = json.status;
-    this.side =
-      json.side && json.side.toUpperCase ? json.side.toUpperCase() : Side.BUY;
+    this.side = json.side && json.side.toUpperCase ? json.side.toUpperCase() : 'buy';
     this.account = json.account;
 
     if (json.json) {
       this.data = new OrderData(json.json);
     }
 
-    this.amount = json.amount ? new BigNumber(json.amount) : new BigNumber("0");
-    this.price = json.price ? new BigNumber(json.price) : new BigNumber("0");
-    this.averagePrice = json.averagePrice
-      ? new BigNumber(json.averagePrice)
-      : new BigNumber("0");
+    this.amount = json.amount ? new BigNumber(json.amount) : new BigNumber('0');
+    this.price = json.price ? new BigNumber(json.price) : new BigNumber('0');
+    this.averagePrice = json.averagePrice ? new BigNumber(json.averagePrice) : new BigNumber('0');
 
-    this.makerFeeRate = json.makerFeeRate
-      ? new BigNumber(json.makerFeeRate)
-      : new BigNumber("0");
-    this.takerFeeRate = json.takerFeeRate
-      ? new BigNumber(json.takerFeeRate)
-      : new BigNumber("0");
+    this.makerFeeRate = json.makerFeeRate ? new BigNumber(json.makerFeeRate) : new BigNumber('0');
+    this.takerFeeRate = json.takerFeeRate ? new BigNumber(json.takerFeeRate) : new BigNumber('0');
     this.makerRebateRate = json.makerRebateRate
       ? new BigNumber(json.makerRebateRate)
-      : new BigNumber("0");
-    this.gasFeeAmount = json.gasFeeAmount
-      ? new BigNumber(json.gasFeeAmount)
-      : new BigNumber("0");
+      : new BigNumber('0');
+    this.gasFeeAmount = json.gasFeeAmount ? new BigNumber(json.gasFeeAmount) : new BigNumber('0');
 
     let availableAmount = json.availableAmount || json.newAvailableAmount;
-    this.availableAmount = availableAmount
-      ? new BigNumber(availableAmount)
-      : new BigNumber("0");
+    this.availableAmount = availableAmount ? new BigNumber(availableAmount) : new BigNumber('0');
     this.pendingAmount = json.pendingAmount
       ? new BigNumber(json.pendingAmount)
-      : new BigNumber("0");
+      : new BigNumber('0');
     this.canceledAmount = json.canceledAmount
       ? new BigNumber(json.canceledAmount)
-      : new BigNumber("0");
+      : new BigNumber('0');
     this.confirmedAmount = json.confirmedAmount
       ? new BigNumber(json.confirmedAmount)
-      : new BigNumber("0");
+      : new BigNumber('0');
 
     this.createdAt = json.createdAt ? new Date(json.createdAt) : undefined;
   }
 }
 
-export enum OrderType {
-  LIMIT = "limit",
-  MARKET = "market"
-}
-
-export enum Side {
-  BUY = "buy",
-  SELL = "sell"
-}
-
-export enum Status {
-  PENDING = "pending",
-  ALL = "all"
-}
+export type OrderType = 'limit' | 'market';
+export type Side = 'buy' | 'sell';
+export type Status = 'pending' | 'all';

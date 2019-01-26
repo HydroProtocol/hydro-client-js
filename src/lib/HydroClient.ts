@@ -1,7 +1,11 @@
-import { join } from 'path';
+import BigNumber from 'bignumber.js';
+import EthereumTx from 'ethereumjs-tx';
 import { hashPersonalMessage, ecsign, toRpcSig, toBuffer, privateToAddress } from 'ethereumjs-util';
+import { join } from 'path';
+import Web3 from 'web3';
 
-import { RequestHandler } from './RequestHandler';
+import { ApiHandler } from './ApiHandler';
+import { Web3Handler } from './Web3Handler';
 
 import { AuthError } from '../errors/errors';
 
@@ -16,30 +20,41 @@ import { Ticker } from '../models/Ticker';
 import { TradeList } from '../models/TradeList';
 
 export interface HydroClientOptions {
-  api_url?: string;
+  apiUrl?: string;
+  web3Url?: string;
 }
 
 export class HydroClient {
-  private handler: RequestHandler;
-  private sign: (message: string) => string;
+  private account: Account;
+  private apiHandler: ApiHandler;
+  private web3Handler: Web3Handler;
 
-  private constructor(handler: RequestHandler, sign: (message: string) => string) {
-    this.handler = handler;
-    this.sign = sign;
+  // Cache of token addresses keyed by symbol pulled from the hydro token api
+  private tokenAddresses: Map<string, string>;
+
+  private constructor(account: Account, options?: HydroClientOptions) {
+    this.account = account;
+    this.apiHandler = new ApiHandler(account, options);
+    this.web3Handler = new Web3Handler(account, options);
+
+    this.tokenAddresses = new Map();
   }
 
   /**
    * If you only want to make public API calls, no authentication is needed
    */
   public static withoutAuth(options?: HydroClientOptions): HydroClient {
-    let sign = (_: string) => {
+    const errorFn = (_: any) => {
       throw new AuthError('Cannot authenticate without a private key!');
     };
-    let handler = new RequestHandler(sign, {
-      api_url: options && options.api_url,
-    });
 
-    return new HydroClient(handler, sign);
+    const account: Account = {
+      address: '',
+      sign: errorFn,
+      signTransaction: errorFn,
+    };
+
+    return new HydroClient(account, options);
   }
 
   /**
@@ -47,39 +62,36 @@ export class HydroClient {
    * @param privateKey A private key in hex format with the form "0x..."
    */
   public static withPrivateKey(privateKey: string, options?: HydroClientOptions): HydroClient {
-    const privateKeyBuffer: Buffer = toBuffer(privateKey) as Buffer;
-    let sign = (message: string) => {
-      // @ts-ignore: Error in the ethereumjs-util ts definition
+    const pkBuffer: Buffer = toBuffer(privateKey) as Buffer;
+    let address = '0x' + (privateToAddress(pkBuffer) as Buffer).toString('hex');
+    let sign = async (message: string) => {
       const shaMessage = hashPersonalMessage(toBuffer(message));
-      const ecdsaSignature = ecsign(shaMessage, privateKeyBuffer);
+      const ecdsaSignature = ecsign(shaMessage, pkBuffer);
       return toRpcSig(ecdsaSignature.v, ecdsaSignature.r, ecdsaSignature.s);
     };
-    let account = '0x' + (privateToAddress(privateKeyBuffer) as Buffer).toString('hex');
-    let handler = new RequestHandler(sign, {
-      account,
-      api_url: options && options.api_url,
-    });
-
-    return new HydroClient(handler, sign);
+    let signTransaction = async (txParams: Transaction) => {
+      const tx = new EthereumTx(txParams);
+      tx.sign(pkBuffer);
+      return '0x' + tx.serialize().toString('hex');
+    };
+    return new HydroClient({ address, sign, signTransaction }, options);
   }
 
   /**
    * If you don't want to supply your private key, or want to integrate with a wallet, provide
    * your own function to sign messages and the account you will be using.
+   *
+   * @param address The address of the account that will be doing the signing
    * @param sign A function that takes the input message and signs it with the private key of the account
-   * @param account The account that will be doing the signing
+   * @param signTransaction An async function that takes a transaction object and signs it with the private key of the account
    */
   public static withCustomAuth(
-    sign: (message: string) => string,
-    account: string,
+    address: string,
+    sign: (message: string) => Promise<string>,
+    signTransaction: (tx: Transaction) => Promise<string>,
     options?: HydroClientOptions
   ): HydroClient {
-    let handler = new RequestHandler(sign, {
-      account,
-      api_url: options && options.api_url,
-    });
-
-    return new HydroClient(handler, sign);
+    return new HydroClient({ address, sign, signTransaction }, options);
   }
 
   /**
@@ -97,7 +109,7 @@ export class HydroClient {
    * See https://docs.ddex.io/#list-markets
    */
   public async listMarkets(): Promise<Market[]> {
-    const data = await this.handler.get(join('markets'));
+    const data = await this.apiHandler.get(join('markets'));
     return data.markets.map((market: any) => new Market(market));
   }
 
@@ -109,7 +121,7 @@ export class HydroClient {
    * @param marketId The id of the market, specified as a trading pair, e.g. "HOT-WETH"
    */
   public async getMarket(marketId: string): Promise<Market> {
-    const data = await this.handler.get(join('markets', marketId));
+    const data = await this.apiHandler.get(join('markets', marketId));
     return new Market(data.market);
   }
 
@@ -119,7 +131,7 @@ export class HydroClient {
    * See https://docs.ddex.io/#list-tickers
    */
   public async listTickers(): Promise<Ticker[]> {
-    const data = await this.handler.get(join('markets', 'tickers'));
+    const data = await this.apiHandler.get(join('markets', 'tickers'));
     return data.tickers.map((ticker: any) => new Ticker(ticker));
   }
 
@@ -131,7 +143,7 @@ export class HydroClient {
    * @param marketId The id of the market, specified as a trading pair, e.g. "HOT-WETH"
    */
   public async getTicker(marketId: string): Promise<Ticker> {
-    const data = await this.handler.get(join('markets', marketId, 'ticker'));
+    const data = await this.apiHandler.get(join('markets', marketId, 'ticker'));
     return new Ticker(data.ticker);
   }
 
@@ -144,7 +156,9 @@ export class HydroClient {
    * @param level (Optional) The amount of detail returned in the orderbook. Default is level ONE.
    */
   public async getOrderbook(marketId: string, level?: OrderbookLevel): Promise<Orderbook> {
-    const data = await this.handler.get(join('markets', marketId, 'orderbook'), { level: level });
+    const data = await this.apiHandler.get(join('markets', marketId, 'orderbook'), {
+      level: level,
+    });
     return new Orderbook(data.orderBook, level);
   }
 
@@ -158,7 +172,7 @@ export class HydroClient {
    * @param perPage (Optional) How many results per page. Default is 20.
    */
   public async listTrades(marketId: string, page?: number, perPage?: number): Promise<TradeList> {
-    const data = await this.handler.get(join('markets', marketId, 'trades'), {
+    const data = await this.apiHandler.get(join('markets', marketId, 'trades'), {
       page,
       perPage,
     });
@@ -181,7 +195,7 @@ export class HydroClient {
     to: number,
     granularity: number
   ): Promise<Candle[]> {
-    const data = await this.handler.get(join('markets', marketId, 'candles'), {
+    const data = await this.apiHandler.get(join('markets', marketId, 'candles'), {
       from,
       to,
       granularity,
@@ -199,7 +213,7 @@ export class HydroClient {
    * @param amount The amount of token in the order
    */
   public async calculateFees(marketId: string, price: string, amount: string): Promise<Fee> {
-    const data = await this.handler.get(join('fees'), {
+    const data = await this.apiHandler.get(join('fees'), {
       marketId,
       price,
       amount,
@@ -236,7 +250,7 @@ export class HydroClient {
     amount: string,
     expires: number = 0
   ): Promise<Order> {
-    const data = await this.handler.post(join('orders', 'build'), {
+    const data = await this.apiHandler.post(join('orders', 'build'), {
       marketId,
       side,
       orderType,
@@ -256,7 +270,7 @@ export class HydroClient {
    * @param signature String created by signing the orderId
    */
   public async placeOrder(orderId: string, signature: string): Promise<Order> {
-    const data = await this.handler.post(join('orders'), {
+    const data = await this.apiHandler.post(join('orders'), {
       orderId,
       signature,
       method: SignatureMethod.ETH_SIGN,
@@ -284,8 +298,8 @@ export class HydroClient {
     amount: string,
     expires: number = 0
   ): Promise<Order> {
-    let order = await this.buildOrder(marketId, side, orderType, price, amount, expires);
-    let signature = this.sign(order.id);
+    const order = await this.buildOrder(marketId, side, orderType, price, amount, expires);
+    const signature = await this.account.sign(order.id);
     return await this.placeOrder(order.id, signature);
   }
 
@@ -297,7 +311,7 @@ export class HydroClient {
    * @param orderId The id of the order you wish to cancel
    */
   public async cancelOrder(orderId: string): Promise<void> {
-    await this.handler.delete(join('orders', orderId));
+    await this.apiHandler.delete(join('orders', orderId));
   }
 
   /**
@@ -316,7 +330,11 @@ export class HydroClient {
     page?: number,
     perPage?: number
   ): Promise<OrderList> {
-    const data = await this.handler.get(join('orders'), { marketId, status, page, perPage }, true);
+    const data = await this.apiHandler.get(
+      join('orders'),
+      { marketId, status, page, perPage },
+      true
+    );
     return new OrderList(data);
   }
 
@@ -328,7 +346,7 @@ export class HydroClient {
    * @param orderId The id of the order
    */
   public async getOrder(orderId: string): Promise<Order> {
-    const data = await this.handler.get(join('orders', orderId), {}, true);
+    const data = await this.apiHandler.get(join('orders', orderId), {}, true);
     return new Order(data.order);
   }
 
@@ -346,7 +364,7 @@ export class HydroClient {
     page?: number,
     perPage?: number
   ): Promise<TradeList> {
-    const data = await this.handler.get(
+    const data = await this.apiHandler.get(
       join('markets', marketId, 'trades', 'mine'),
       { page, perPage },
       true
@@ -360,7 +378,7 @@ export class HydroClient {
    * See https://docs.ddex.io/#list-locked-balances
    */
   public async listLockedBalances(): Promise<LockedBalance[]> {
-    const data = await this.handler.get(join('account', 'lockedBalances'), {}, true);
+    const data = await this.apiHandler.get(join('account', 'lockedBalances'), {}, true);
     return data.lockedBalances.map((lockedBalance: any) => new LockedBalance(lockedBalance));
   }
 
@@ -372,8 +390,119 @@ export class HydroClient {
    * @param symbol The symbol for the token you want to see your locked balance
    */
   public async getLockedBalance(symbol: string): Promise<LockedBalance> {
-    const data = await this.handler.get(join('account', 'lockedBalance'), { symbol: symbol }, true);
+    const data = await this.apiHandler.get(
+      join('account', 'lockedBalance'),
+      { symbol: symbol },
+      true
+    );
     return new LockedBalance(data.lockedBalance);
+  }
+
+  /**
+   * Helper Methods (requires auth)
+   *
+   * These helper methods don't generally don't call the Hydro API, instead querying the blockchain
+   * directly. They are useful in helping to wrap/unwrap ETH on your account, and allowing you to
+   * approve tokens to be traded on the DDEX-1.0 relayer.
+   *
+   * To use these methods, you must provide a mainnet endpoint url, like infura, which will be used
+   * to interact with the blockchain. It is taken in as one of the HydroClient options, as web3_url.
+   *
+   * See
+   * * https://docs.ddex.io/#wrapping-ether
+   * * https://docs.ddex.io/#enabling-token-trading
+   */
+
+  /**
+   * Query your balance of a token.
+   *
+   * @param symbol Symbol of a token you wish to query the balance of. No token returns ETH balance.
+   * @return Balance in your account for this token.
+   */
+  public async getBalance(symbol?: string): Promise<string> {
+    let address;
+    if (symbol) {
+      address = await this.getTokenAddress(symbol);
+    }
+    return this.web3Handler.getBalance(address);
+  }
+
+  /**
+   * Wrap a specified amount of ETH from your account into WETH. This is required because the
+   * DDEX-1.0 relayer can only perform atomic trading between two ERC20 tokens, and unfortunately
+   * ETH itself does not conform to the ERC20 standard. ETH and WETH are always exchanged at a 1:1
+   * ratio, so you can wrap and unwrap ETH anytime you like with only the cost of gas.
+   *
+   * @param amount The amount of ETH to wrap
+   * @param wait If true, the promise will only resolve when the transaction is confirmed
+   * @return Transaction hash
+   */
+  public async wrapEth(amount: string, wait?: boolean): Promise<string> {
+    const wethAddress = await this.getTokenAddress('WETH');
+    return this.web3Handler.wrapEth(wethAddress, amount, wait);
+  }
+
+  /**
+   * Unwrap a specified amount of WETH from your account back into ETH.
+   *
+   * @param amount The amount of WETH to unwrap
+   * @param wait If true, the promise will only resolve when the transaction is confirmed
+   * @return Transaction hash
+   */
+  public async unwrapEth(amount: string, wait?: boolean): Promise<string> {
+    const wethAddress = await this.getTokenAddress('WETH');
+    return this.web3Handler.unwrapEth(wethAddress, amount, wait);
+  }
+
+  /**
+   * Determine if this token has a proxy allowance set on the Hydro proxy contract.
+   *
+   * @param symbol Symbol of a token you wish to check if it is enabled or diabled for sale.
+   */
+  public async isTokenEnabled(symbol: string): Promise<boolean> {
+    const tokenAddress = await this.getTokenAddress(symbol);
+    const allowance = await this.web3Handler.getAllowance(tokenAddress);
+    return new BigNumber(allowance).gte(new BigNumber(10).pow(10));
+  }
+
+  /**
+   * Enable token to be sold via Hydro API. This will allow the Hydro proxy contract to send tokens
+   * of this type on your behalf, allowing atomic trading of tokens between two parties.
+   *
+   * @param symbol Symbol of a token you wish to enable for sale via Hydro API
+   * @param wait If true, the promise will only resolve when the transaction is confirmed
+   * @return Transaction hash
+   */
+  public async enableToken(symbol: string, wait?: boolean): Promise<string> {
+    const tokenAddress = await this.getTokenAddress(symbol);
+    return this.web3Handler.enableToken(tokenAddress, wait);
+  }
+
+  /**
+   * Disable token to be sold via Hydro API. The Hydro proxy contract will no longer be able to send
+   * tokens of this type on your behalf.
+   *
+   * @param symbol Symbol of a token you wish to disable for sale via Hydro API
+   * @param wait If true, the promise will only resolve when the transaction is confirmed
+   * @return Transaction hash
+   */
+  public async disableToken(symbol: string, wait?: boolean): Promise<string> {
+    const tokenAddress = await this.getTokenAddress(symbol);
+    return this.web3Handler.disableToken(tokenAddress, wait);
+  }
+
+  private async getTokenAddress(token: string): Promise<string> {
+    if (!this.tokenAddresses.get(token)) {
+      const data = await this.apiHandler.get(join('tokens', token));
+      this.tokenAddresses.set(token, data.token.address);
+    }
+
+    const address = this.tokenAddresses.get(token);
+    if (!address) {
+      throw new Error('Unable to get token address');
+    }
+
+    return address;
   }
 }
 
@@ -381,4 +510,21 @@ export class HydroClient {
 enum SignatureMethod {
   ETH_SIGN,
   EIP_712,
+}
+
+export interface Transaction {
+  nonce?: string | number;
+  chainId?: string | number;
+  from?: string;
+  to?: string;
+  data?: string;
+  value?: string | number;
+  gas?: string | number;
+  gasPrice?: string | number;
+}
+
+export interface Account {
+  address: string;
+  sign(message: string): Promise<string>;
+  signTransaction(tx: Transaction): Promise<string>;
 }

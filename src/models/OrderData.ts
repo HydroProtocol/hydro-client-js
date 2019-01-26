@@ -1,5 +1,5 @@
-import { BigNumber } from "bignumber.js";
-import { OrderType, Side } from "./Order";
+import { BigNumber } from 'bignumber.js';
+import { OrderType, Side } from './Order';
 
 /**
  * Data used by 0x to construct an order.
@@ -55,13 +55,13 @@ export class OrderData {
 
     this.baseTokenAmount = json.baseTokenAmount
       ? new BigNumber(json.baseTokenAmount)
-      : new BigNumber("0");
+      : new BigNumber('0');
     this.quoteTokenAmount = json.quoteTokenAmount
       ? new BigNumber(json.quoteTokenAmount)
-      : new BigNumber("0");
+      : new BigNumber('0');
     this.gasTokenAmount = json.gasTokenAmount
       ? new BigNumber(json.gasTokenAmount)
-      : new BigNumber("0");
+      : new BigNumber('0');
 
     this.data = json.data;
   }
@@ -80,7 +80,7 @@ export class OrderData {
    */
   public getSide(): Side {
     const side = this.sliceData(1, 1);
-    return side === 0 ? Side.BUY : Side.SELL;
+    return side === 0 ? 'buy' : 'sell';
   }
 
   /**
@@ -88,7 +88,7 @@ export class OrderData {
    */
   public getType(): OrderType {
     const type = this.sliceData(2, 1);
-    return type === 0 ? OrderType.LIMIT : OrderType.MARKET;
+    return type === 0 ? 'limit' : 'market';
   }
 
   /**
@@ -135,7 +135,7 @@ export class OrderData {
    * @return The decimal representation of the hex found
    */
   private sliceData(offset: number, size: number): number {
-    const additionalOffset = this.data.startsWith("0x") ? 2 : 0;
+    const additionalOffset = this.data.startsWith('0x') ? 2 : 0;
     const hex = this.data.substr(offset * 2 + additionalOffset, size * 2);
     return parseInt(hex, 16);
   }

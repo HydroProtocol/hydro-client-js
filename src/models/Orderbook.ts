@@ -1,5 +1,5 @@
-import { Order } from "./Order";
-import { PriceLevel } from "./PriceLevel";
+import { Order } from './Order';
+import { PriceLevel } from './PriceLevel';
 
 export class Orderbook {
   /**
@@ -20,7 +20,7 @@ export class Orderbook {
   constructor(json: any, level?: OrderbookLevel) {
     this.marketId = json.marketId;
 
-    if (level === OrderbookLevel.THREE) {
+    if (level === 3) {
       this.bids = json.bids.map((bid: any) => new Order(bid));
       this.asks = json.asks.map((ask: any) => new Order(ask));
     } else {
@@ -44,8 +44,4 @@ export class Orderbook {
  *
  * See https://docs.ddex.io/#get-orderbook
  */
-export enum OrderbookLevel {
-  "ONE" = "1",
-  "TWO" = "2",
-  "THREE" = "3"
-}
+export type OrderbookLevel = 1 | 2 | 3;

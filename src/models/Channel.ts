@@ -21,8 +21,4 @@ export class Channel {
 /**
  * See https://docs.ddex.io/#websocket
  */
-export enum ChannelName {
-  TICKER = "ticker",
-  ORDERBOOK = "orderbook",
-  FULL = "full"
-}
+export type ChannelName = 'ticker' | 'orderbook' | 'full';

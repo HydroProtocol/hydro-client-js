@@ -1,28 +1,28 @@
-import axios from 'axios';
-import { AxiosResponse } from 'axios';
-
-import { ServerError, APIError } from '../errors/errors';
+import axios, { AxiosResponse } from 'axios';
 import { URL } from 'url';
 
-export interface RequestHandlerOptions {
-  account?: string;
-  api_url?: string;
+import { Account } from './HydroClient';
+
+import { ServerError, APIError } from '../errors/errors';
+
+export interface ApiHandlerOptions {
+  apiUrl?: string;
 }
 
 /**
  * Handle building requests to the server, including authentication
  * in the request header.
  */
-export class RequestHandler {
-  private static BASE_MESSAGE: string = 'HYDRO-AUTHENTICATION';
-  private static API_URL: string = 'https://api.ddex.io/v3/';
-  private static HEADER: string = 'Hydro-Authentication';
+export class ApiHandler {
+  private BASE_MESSAGE: string = 'HYDRO-AUTHENTICATION';
+  private API_URL: string = 'https://api.ddex.io/v3/';
+  private HEADER: string = 'Hydro-Authentication';
 
-  private sign: (message: string) => string;
-  private options?: RequestHandlerOptions;
+  private account: Account;
+  private options?: ApiHandlerOptions;
 
-  constructor(sign: (message: string) => string, options?: RequestHandlerOptions) {
-    this.sign = sign;
+  constructor(account: Account, options?: ApiHandlerOptions) {
+    this.account = account;
     this.options = options;
   }
 
@@ -32,24 +32,23 @@ export class RequestHandler {
    * currently requires.
    */
   public async get(path: string, params?: {}, sign: boolean = false): Promise<any> {
+    const headers = sign ? await this.getAuthHeaders() : {};
     const res = await axios.get(this.getURL(path), {
       params: params,
-      headers: sign ? this.getAuthHeaders() : {},
+      headers,
     });
     return this.handleResponse(res);
   }
 
   public async post(path: string, data?: {}): Promise<any> {
-    const res = await axios.post(this.getURL(path), data, {
-      headers: this.getAuthHeaders(),
-    });
+    const headers = await this.getAuthHeaders();
+    const res = await axios.post(this.getURL(path), data, { headers });
     return this.handleResponse(res);
   }
 
   public async delete(path: string): Promise<any> {
-    const res = await axios.delete(this.getURL(path), {
-      headers: this.getAuthHeaders(),
-    });
+    const headers = await this.getAuthHeaders();
+    const res = await axios.delete(this.getURL(path), { headers });
     return this.handleResponse(res);
   }
 
@@ -58,19 +57,16 @@ export class RequestHandler {
     return url.toString();
   }
 
-  private getAuthHeaders(): {} {
-    const message = RequestHandler.BASE_MESSAGE + '@' + Date.now();
+  private async getAuthHeaders(): Promise<{}> {
+    const message = this.BASE_MESSAGE + '@' + Date.now();
+    const signature = await this.account.sign(message);
     return {
-      [RequestHandler.HEADER]: [this.getAccount(), message, this.sign(message)].join('#'),
+      [this.HEADER]: [this.account.address, message, signature].join('#'),
     };
   }
 
-  private getAccount(): string {
-    return this.options && this.options.account ? this.options.account : '';
-  }
-
   private getApiUrl(): string {
-    return this.options && this.options.api_url ? this.options.api_url : RequestHandler.API_URL;
+    return this.options && this.options.apiUrl ? this.options.apiUrl : this.API_URL;
   }
 
   private handleResponse(res: AxiosResponse): any {
