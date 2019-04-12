@@ -27,7 +27,7 @@ For full API specs, please see the documentation: https://docs.ddex.io/
 To get started, simply install the package through npm:
 
 ```bash
-npm i @hydro-protocol/sdk
+npm i @hydro-protocol/hydro-client-js
 ```
 
 Once you've done that there are two main interfaces into the API.
@@ -37,7 +37,7 @@ Once you've done that there are two main interfaces into the API.
 HydroClient is used to query the API for data. Initialize it with your private key to start making API calls.
 
 ```javascript
-import { HydroClient } from "@hydro-protocol/sdk";
+import { HydroClient } from "@hydro-protocol/hydro-client-js";
 
 let client = HydroClient.withPrivateKey("0x..."); // Your private key here
 
@@ -381,7 +381,7 @@ These methods do not query the Hydro API directly, but instead perform actions d
 Our other API interface is HydroWatcher, which is used to get live updates about the state of the market. It will connect to our websocket endpoint and notify you about any changes to the exchange that you are subscribed to. All of this data is public, so no authentication is required. [Websocket API](https://docs.ddex.io/#websocket).
 
 ```javascript
-import { HydroWatcher } from "@hydro-protocol/sdk"
+import { HydroWatcher } from "@hydro-protocol/hydro-client-js"
 
 let watcher = new HydroWatcher({
   // Listen for changes to the HOT-WETH ticker and post them to the console.
