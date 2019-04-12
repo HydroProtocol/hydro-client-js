@@ -1,6 +1,6 @@
-# Javascript SDK for the Hydro API
+# Javascript Client for the Hydro API
 
-A client for interacting with the Hydro API
+A client written in Typescript for interacting with the Hydro API
 
 ### New in version 2.x
 
@@ -14,11 +14,11 @@ Hydro Protocol is an open-source framework for building decentralized exchanges 
 
 For more information, please visit https://www.hydroprotocol.io/
 
-# What is this SDK for?
+# What is this Client for?
 
-The SDK is built to provide easy access to the Hydro API. The API is intended to give you full access to the state of the market, and to help you easily create new orders based on that information. Using this API, you can write helpers to visualize the market data however you like, clients to help you create orders more easily, or full on bots that will analyze the incoming data and place orders automatically.
+The Client is built to provide easy access to the Hydro API. The API is intended to give you full access to the state of the market, and to help you easily create new orders based on that information. Using this API, you can write helpers to visualize the market data however you like, clients to help you create orders more easily, or full on bots that will analyze the incoming data and place orders automatically.
 
-By default, this SDK connects to the DDEX exchange, but is compatible with any exchange running the Hydro API.
+By default, this Client connects to the DDEX exchange, but is compatible with any exchange running the Hydro API.
 
 For full API specs, please see the documentation: https://docs.ddex.io/
 
@@ -92,7 +92,7 @@ let order = await client.createOrder("HOT-WETH", "buy", "market", "0.01", "100")
   )</pre>
       </td>
       <td>
-        If you are uncomfortable passing your private key directly to the SDK, you can implement your own custom authentication using whatever tools you like. You will need to provide:<br><br>The <b>address</b> of the wallet<br><br>A <b>sign</b> method which returns a Promise resolving to a string representing the signature of the message in hex.<br><br>A <b>signTransaction</b> method which returns a Promise resolving to a string representing the signature of the transaction in hex.
+        If you are uncomfortable passing your private key directly to the client code, you can implement your own custom authentication using whatever tools you like. You will need to provide:<br><br>The <b>address</b> of the wallet<br><br>A <b>sign</b> method which returns a Promise resolving to a string representing the signature of the message in hex.<br><br>A <b>signTransaction</b> method which returns a Promise resolving to a string representing the signature of the transaction in hex.
       </td>
     </tr>
   </tbody>
