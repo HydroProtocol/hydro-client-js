@@ -3,8 +3,8 @@ import Web3 from 'web3';
 
 import { Account, Transaction } from './HydroClient';
 
-import erc20Abi from '../abi/erc20.abi.json';
-import wethAbi from '../abi/weth.abi.json';
+import erc20Abi from '../abi/erc20.json';
+import wethAbi from '../abi/weth.json';
 
 import { erc20 } from '../contracts/erc20';
 import { weth } from '../contracts/weth';
@@ -32,25 +32,26 @@ export class Web3Handler {
 
   public async getBalance(address?: string) {
     const web3 = this.getWeb3();
+    let balance;
     if (address) {
-      const balance = await this.getERC20Contract(address)
+      balance = await this.getERC20Contract(address)
         .methods.balanceOf(this.account.address)
         .call();
-      return Web3.utils.fromWei(balance);
     } else {
-      const balance = await web3.eth.getBalance(this.account.address);
-      return Web3.utils.fromWei(balance).toString();
+      balance = await web3.eth.getBalance(this.account.address);
     }
+    return web3.utils.fromWei(new BigNumber(balance).toString()).toString();
   }
 
   public async wrapEth(wethAddress: string, amount: string, wait?: boolean): Promise<string> {
     const contract = this.getWethContract(wethAddress);
     const data = contract.methods.deposit().encodeABI();
+    const web3 = this.getWeb3();
     return this.signAndSendTransaction(
       {
         data,
         to: wethAddress,
-        value: Web3.utils.toWei(amount),
+        value: web3.utils.toHex(web3.utils.toWei(amount)),
       },
       wait
     );
@@ -58,12 +59,13 @@ export class Web3Handler {
 
   public async unwrapEth(wethAddress: string, amount: string, wait?: boolean): Promise<string> {
     const contract = this.getWethContract(wethAddress);
-    const data = contract.methods.withdraw(Web3.utils.toWei(amount)).encodeABI();
+    const web3 = this.getWeb3();
+    const data = contract.methods.withdraw(web3.utils.toWei(amount)).encodeABI();
     return this.signAndSendTransaction(
       {
         data,
         to: wethAddress,
-        value: 0,
+        value: web3.utils.toHex(0),
       },
       wait
     );
@@ -111,11 +113,13 @@ export class Web3Handler {
 
   private getERC20Contract(address: string) {
     const web3 = this.getWeb3();
+    // @ts-ignore
     return new web3.eth.Contract(erc20Abi, address) as erc20;
   }
 
   private getWethContract(address: string) {
     const web3 = this.getWeb3();
+    // @ts-ignore
     return new web3.eth.Contract(wethAbi, address) as weth;
   }
 
@@ -163,12 +167,12 @@ export class Web3Handler {
       chainId,
       from,
       gas: 100000000,
-      gasPrice,
+      gasPrice: web3.utils.toHex(gasPrice),
       nonce,
     };
 
     const gas = await web3.eth.estimateGas(tx);
 
-    return { ...tx, gas: gas * 2 };
+    return { ...tx, gas: web3.utils.toHex(gas) };
   }
 }

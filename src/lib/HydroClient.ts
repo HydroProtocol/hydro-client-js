@@ -2,7 +2,6 @@ import BigNumber from 'bignumber.js';
 import EthereumTx from 'ethereumjs-tx';
 import { hashPersonalMessage, ecsign, toRpcSig, toBuffer, privateToAddress } from 'ethereumjs-util';
 import { join } from 'path';
-import Web3 from 'web3';
 
 import { ApiHandler } from './ApiHandler';
 import { Web3Handler } from './Web3Handler';
@@ -513,8 +512,8 @@ enum SignatureMethod {
 }
 
 export interface Transaction {
-  nonce?: string | number;
-  chainId?: string | number;
+  nonce?: number;
+  chainId?: number;
   from?: string;
   to?: string;
   data?: string;
